@@ -1,0 +1,181 @@
+---
+title: "avo nutrients"
+output: 
+ github_document: default
+ 
+always_allow_html: true
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, results='hide')
+
+# https://yihui.org/knitr/options/
+
+# echo: (TRUE; logical or numeric) Whether to display the source code
+# results: ('markup'; character) Controls how to display the text results.
+# warning: (TRUE; logical) Whether to preserve warnings
+# error: (TRUE; logical) Whether to preserve errors
+# include: (TRUE; logical) Whether to include the chunk output in the output document.
+# 
+#$$$$$$$$$$$$
+```
+
+```{r localCode, echo=FALSE, results=FALSE, include=FALSE}
+##
+# source.url <- c("https://raw.githubusercontent.com/cordphelps/ampelos/master/data/bugs.csv")
+# source.url <- c("./data/soilData.csv")
+
+setwd("/Users/rcphelps/code/avoNutrients")
+
+output.path <- "/Volumes/GoogleDrive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/output"
+
+source.url <- c("/Volumes/GoogleDrive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/dataCSV/soilData.csv")
+soil.tibl <- dplyr::as_tibble(read.csv(source.url, header=TRUE, row.names=NULL))
+
+source.url <- c("/Volumes/GoogleDrive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/dataCSV/leafData.csv")
+leaf.tibl <- dplyr::as_tibble(read.csv(source.url, header=TRUE, row.names=NULL))
+
+library(tidyverse)
+library(dplyr)
+
+stripMisc <- function(tibble) {
+  tibble <- tibble %>% 
+  dplyr::filter(location != "four") %>% 
+  dplyr::filter(location != "old") %>% 
+  dplyr::filter(location != "long") %>% 
+  dplyr::filter(location != "wind30") %>% 
+  dplyr::filter(location != "old30") %>% 
+  dplyr::filter(location != "long30")
+  return(tibble)
+}
+
+plotMaterial <- function(tibble, label, path, xaxis, material) {
+  
+  # https://stackoverflow.com/questions/26003574/use-dynamic-variable-names-in-dplyr
+  gg <- ggplot(tibble, aes(x = year, y = !!sym(material) ) ) + 
+    
+            geom_jitter(shape = 21, color = "black", fill = "white", size = 3) + 
+            geom_smooth(formula = y ~ x, method = lm, se = FALSE) +
+
+            scale_x_continuous(breaks = seq(min(2010), max(2024), by = 1)) +
+    
+            annotate("text", y = 1:5, x = 2010, 
+             label = c("deficient", "low", "ok", "high", "excessive"    )) +
+
+  	        labs(	x = "year", y = "5 point scale", 
+ 					    title = paste("material : ", label, " ", material, sep="")) +
+    
+            theme_bw() 
+    
+  
+    fileName <- paste(label, "-", material, "-byBlock.pdf", sep="")
+    fullPath <- paste(path, "/", fileName, sep="")
+
+    if (file.exists(fullPath)) { file.remove(fullPath) }
+
+    suppressMessages(ggsave(fileName, plot = gg, device = NULL, path = path,
+       scale = 1, width = 8, height = NA, dpi = 300, limitsize = TRUE,
+       units = "in") )
+  
+  return(gg)
+
+}
+
+
+
+```
+
+```{r plotMaterial, echo=FALSE, results=FALSE, error=F, warning=F, include=T}
+
+# https://www.tidymodels.org/start/models/
+
+soilMaterial <- c("nitrateNitrogen",
+                  "phosphorousP2O5",
+                  "potassiumK2OExch",
+                  "potassiumK2OSol",
+                  "calciumExch",
+                  "calciumSol",
+                  "magnesiumExch",
+                  "magnesiumSol",
+                  "sodiumExch",
+                  "sodiumSol",
+                  "sulfate",
+                  "zinc",
+                  "manganese",
+                  "iron",
+                  "copper",
+                  "boron",
+                  "chloride")
+
+for (i in soilMaterial) {
+  gg <- plotMaterial(tibble=soil.tibl, label="soil", path=output.path, xaxis="year", material=i)
+  print(gg)
+}
+
+leafMaterial <- c("Nitrogen",
+                  "Phosphorous",
+                  "Potassium",
+                  "Calcium",
+                  "Magnesium",
+                  "Zinc",
+                  "Manganese",
+                  "Iron",
+                  "Copper",
+                  "Boron",
+                  "Sodium")
+
+for (i in leafMaterial) {
+  gg <- plotMaterial(tibble=leaf.tibl, label="leaf", path=output.path, xaxis="year", material=i)
+  print(gg)
+}
+
+
+```
+
+```{r}
+
+source.url <- c("/Volumes/GoogleDrive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/dataCSV/binsNitrogenPotassium.csv")
+binsNP.tibl <- dplyr::as_tibble(read.csv(source.url, header=TRUE, row.names=NULL))
+
+binsNP.tibl <- binsNP.tibl %>% 
+  dplyr::filter(year != 2017)
+
+gg <- ggplot(binsNP.tibl, aes(x = year ) ) + 
+    
+            geom_point(aes(y=bins), shape = 21, color = "black", fill = "white", size = 3) + 
+            geom_smooth(aes(x=year, y=bins), formula = y ~ x, method = loess, se=F, size=1) +
+  
+            geom_point(aes(y=Nitrogen), shape = 22, color = "black", fill = "green", size = 3) +              geom_smooth(aes(x=year, y=Nitrogen), formula = y ~ x, method = loess, se=F, size=1) +
+
+            geom_point(aes(y=Potassium), shape = 23, color = "black", fill = "blue", size = 3) + 
+            geom_smooth(aes(x=year, y=Potassium), formula = y ~ x, method = loess, se=F, size=1) +
+              
+              
+            xlim(2010, 2022) +
+            ylim(0,1300) +
+
+            scale_x_continuous(limits = c(2010, 2022), 
+                               breaks = seq(min(2010), max(2022), by = 1)) +
+
+  	        labs(	x = "year",  y = " ",
+ 					    title = paste("bins, \nNitrogen (gallons)\nPotassium (gallons)\n(ignore 2017)", sep="")) +
+    
+            theme_bw() 
+
+    path <- "/Volumes/GoogleDrive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/output"
+
+    fileName <- paste("bins-N-K.pdf", sep="")
+    fullPath <- paste(path, "/", fileName, sep="")
+
+    if (file.exists(fullPath)) { file.remove(fullPath) }
+
+    suppressMessages(ggsave(fileName, plot = gg, device = NULL, path = path,
+       scale = 1, width = 8, height = NA, dpi = 300, limitsize = TRUE,
+       units = "in") )
+
+
+```
+
