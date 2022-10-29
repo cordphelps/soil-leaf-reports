@@ -39,13 +39,17 @@ output.path <- "/Volumes/Macintosh\ HD/Users/rcphelps/Google\ Drive/My\ Drive/ot
 
 
 
-source.url <- c("https://raw.githubusercontent.com/cordphelps/soil-leaf-reports/master/dataCSV/leafData.csv")
+leaf.url <- c("https://raw.githubusercontent.com/cordphelps/soil-leaf-reports/master/dataCSV/leafData.csv")
 
-leaf.tibl <- dplyr::as_tibble(read.csv(file=source.url, header=TRUE, row.names=NULL))
+leaf.tibl <- dplyr::as_tibble(read.csv(file=leaf.url, header=TRUE, row.names=NULL))
+
+material.url <- c("https://raw.githubusercontent.com/cordphelps/soil-leaf-reports/master/dataCSV/material-injection-history.csv")
+
+material.tibl <- dplyr::as_tibble(read.csv(file=material.url, header=TRUE, row.names=NULL))
 
 leafMaterial <- c("Potassium")
 
-gg <- plotMaterial(leaf.tibl, label="test", path=output.path, xaxis, material=leafMaterial)
+gg <- plotMaterial(leaf.tibl, label="test", path=output.path, xaxis, material=leafMaterial, material.history=material.tibl)
 
 pri
 
@@ -54,12 +58,16 @@ pri
 
 ```{r localCode, echo=FALSE, results=FALSE, include=FALSE}
 
-plotMaterial <- function(tibble, label, path, xaxis, material) {
+plotMaterial <- function(tibble, label, path, xaxis, material, material.history) {
+  
   
   # https://stackoverflow.com/questions/26003574/use-dynamic-variable-names-in-dplyr
   # gg <- ggplot(tibble, aes(x = year, y = !!sym(material) ) ) + 
   
-    gg <- ggplot(tibble, aes(x = as.numeric(year), y = Potassium ) ) +
+  # for Potassium
+  yearsWithData <- c(2012, 2013, 2018, 2019, 2020, 2021, 2022)
+  
+  gg <- ggplot(tibble, aes(x = as.character(year), y = Potassium ) ) +
       
     geom_boxplot( aes(group = year), fill="slateblue", alpha=0.2, outlier.shape=1) + 
     #stat_summary(fun = mean, geom="point", size=3) + 
@@ -70,21 +78,35 @@ plotMaterial <- function(tibble, label, path, xaxis, material) {
 
     # discrete axis determines boxplot orientation
     #scale_x_discrete(breaks = seq(min(2010), max(2024), by = 1)) +
-    scale_x_discrete(limits=c(2012, 2013, 2018, 2019, 2020, 2021, 2022)) +
-      
-    #scale_y_continuous(breaks = seq(min(0), max(5), by = 1)) +
-    scale_y_discrete(limits=c("2", "3", "4") ) +
+    scale_x_discrete(limits=as.character(yearsWithData)) +
 
-    annotate("text", y = 1:5, x = 2010, 
-          label = c("deficient", "low", "ok", "high", "excessive"    )) +
+    scale_y_continuous(breaks = seq(min(0), max(5), by = 1)) +
+
+    #annotate("text", y = 1:5, group="2012", 
+        #  label = c("deficient", "low", "ok", "high", "excessive"    )) +
 
   	 labs(x = "year", y ="5 point scale", 
  				  title = paste("material : ", label, " ", material, sep="")) +
     
     theme_bw() 
-    
-    content.string <- paste("K", "400", " gal", sep="")
-    gg <- gg + makeLabels(content=content.string, x.position=2013, y.position = 4)
+  
+    if (TRUE) {
+    # add labels for the amount of K injected each year
+      for (i in 1:length(yearsWithData)) { 
+        
+        k.gallons <- material.history %>% 
+          filter(year==yearsWithData[[i]])  %>% 
+          pull(K..gallons.)
+        
+        content.string <- paste("K: ", k.gallons, " gal", sep="")
+        
+        #print( yearsWithData[[i]])
+        
+        gg + makeLabels(content=content.string, 
+                        x.position=yearsWithData[[i]], 
+                        y.position = 1.5)
+      }
+    }
       
     if (FALSE) {
       
@@ -108,14 +130,13 @@ makeLabels <- function(content, x.position, y.position) {
   
   # https://r-graph-gallery.com/275-add-text-labels-with-ggplot2.html
   
-  gg.label <- geom_label(
-                label=content, 
-                x=x.position,
-                y=y.position,
-                label.padding = unit(0.55, "lines"), # Rectangle size around label
-                label.size = 0.35,
-                color = "black",
-                fill="#69b3a2")
+  print(paste( content, x.position, y.position, sep=" "))
+  
+  gg.label <- geom_text(aes(y=y.position, label=content), 
+                        group=as.character(x.position),
+                        angle= 45,
+                        #  size = 0.35,
+                        color = "black")
     
   return(gg.label)
 }
