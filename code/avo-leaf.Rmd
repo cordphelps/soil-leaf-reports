@@ -28,10 +28,6 @@ knitr::opts_chunk$set(echo = FALSE, results='hide')
 
 library(tidyverse)
 library(dplyr)
-library(viridis)
-
-# source.url <- c("https://raw.githubusercontent.com/cordphelps/ampelos/master/data/bugs.csv")
-# source.url <- c("./data/soilData.csv")
 
 setwd("/Users/rcphelps/code/avoNutrients")
 
@@ -80,8 +76,7 @@ plotMaterial <- function(tibble, label, path, xaxis, material, material.history)
     #scale_x_discrete(breaks = seq(min(2010), max(2024), by = 1)) +
     scale_x_discrete(limits=as.character(yearsWithData)) +
 
-    scale_y_continuous(breaks = seq(min(0), max(5), by = 1)) +
-
+    scale_y_continuous(limits=c(0, 5), breaks = seq(min(0), max(5), by = 1)) +
     #annotate("text", y = 1:5, group="2012", 
         #  label = c("deficient", "low", "ok", "high", "excessive"    )) +
 
@@ -132,11 +127,11 @@ makeLabels <- function(content, x.position, y.position) {
   
   print(paste( content, x.position, y.position, sep=" "))
   
-  gg.label <- geom_text(aes(y=y.position, label=content), 
-                        group=as.character(x.position),
+  gg.label <- geom_text(aes(x=2, y=y.position, label=content, 
+                        #group=as.character(x.position),
                         angle= 45,
                         #  size = 0.35,
-                        color = "black")
+                        color = "black"))
     
   return(gg.label)
 }
