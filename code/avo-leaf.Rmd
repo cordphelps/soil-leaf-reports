@@ -31,23 +31,17 @@ library(dplyr)
 
 setwd("/Users/rcphelps/code/avoNutrients")
 
-output.path <- "/Volumes/Macintosh\ HD/Users/rcphelps/Google\ Drive/My\ Drive/other/avo/soil-leaf-reports/soil-leaf-data/output"
-
-
-
 leaf.url <- c("https://raw.githubusercontent.com/cordphelps/soil-leaf-reports/master/dataCSV/leafData.csv")
 
 leaf.tibl <- dplyr::as_tibble(read.csv(file=leaf.url, header=TRUE, row.names=NULL))
 
 material.url <- c("https://raw.githubusercontent.com/cordphelps/soil-leaf-reports/master/dataCSV/material-injection-history.csv")
 
+# get gallons of material by year for N and K with high and low ranges
 material.tibl <- dplyr::as_tibble(read.csv(file=material.url, header=TRUE, row.names=NULL))
 
-leafMaterial <- c("Potassium")
+gg <- plotMaterial(leaf.tibl, label="leaf mineral composition ", path=output.path, xaxis, material=leafMaterial, material.history=material.tibl)
 
-gg <- plotMaterial(leaf.tibl, label="test", path=output.path, xaxis, material=leafMaterial, material.history=material.tibl)
-
-pri
 
 ```
 
@@ -56,34 +50,87 @@ pri
 
 plotMaterial <- function(tibble, label, path, xaxis, material, material.history) {
   
+  leafPhelps.tibl <- tibble %>% dplyr::filter(ranch == 'phelps')
+  leafHuff.tibl <- tibble %>% dplyr::filter(ranch == 'huff')
   
-  # https://stackoverflow.com/questions/26003574/use-dynamic-variable-names-in-dplyr
-  # gg <- ggplot(tibble, aes(x = year, y = !!sym(material) ) ) + 
+  # make a vector of character strings representing the years identified in the data
+  #yearsWithData <- c('2010', '2012', '2013', '2014', '2015', '2016', '2018', '2019', '2021', '2022')
+  yearsWithData <- as.character(pull((tibble %>% dplyr::distinct(year)), year))
   
-  # for Potassium
-  yearsWithData <- c(2012, 2013, 2018, 2019, 2020, 2021, 2022)
+  # get range (caution: the result is a 'dataframe'; use as.numeric() )
+  k.high <- material.tibl %>% slice(1) %>% select(K.range.high)
+  k.low <- material.tibl %>% slice(1) %>% select(K.range.low)
+  n.high <- material.tibl %>% slice(1) %>% select(N.range.high)
+  n.low <- material.tibl %>% slice(1) %>% select(N.range.low) 
   
-  gg <- ggplot(tibble, aes(x = as.character(year), y = Potassium ) ) +
-      
-    geom_boxplot( aes(group = year), fill="slateblue", alpha=0.2, outlier.shape=1) + 
+  gg <- ggplot(leafPhelps.tibl, aes(x = as.character(year), y = Potassium ) ) +
+
+    # add a colored rectangle highlighting the high/low range (%) 
+    # 'Inf' works on the categorical axis
+    annotate("rect", xmin = -Inf, xmax = Inf, 
+              ymin = as.numeric(k.low), ymax = as.numeric(k.high),
+              alpha = .3, fill = "#5ac5e8") +
+    
+    # add high/low range (%) for material measured in leaf tissue analysis 
+    geom_hline(yintercept=c(as.numeric(k.low), as.numeric(k.high)),  linetype='twodash') +
+    
+    annotate("rect", xmin = -Inf, xmax = Inf, 
+              ymin = as.numeric(n.low), ymax = as.numeric(n.high),
+              alpha = .3, fill = "#66CC99")  + 
+        
+    geom_hline(yintercept=c(as.numeric(n.low), as.numeric(n.high)), linetype='dotted') +
+ 
+
+ 
+    geom_boxplot(aes(group = year), fill="#21b8eb", alpha=0.4, outlier.shape=1) + 
     #stat_summary(fun = mean, geom="point", size=3) + 
     #stat_summary(fun.data = mean_se, geom = "errorbar") +
     
-    geom_jitter(width=0.1, shape = 21, color = "black", fill = "white", size = 3) + 
+    geom_jitter(data=leafHuff.tibl, 
+                aes(x = as.character(year), y = Potassium),
+                    color = "black", fill = "#8f9596", 
+                    shape = 21, size = 3, width=0.1) +
+    
+    geom_jitter(data=leafPhelps.tibl, 
+                aes(x = as.character(year), y = Potassium),
+                    color = "black", fill = "white", 
+                    shape = 21, size = 3, width=0.1) +
     # geom_smooth(formula = y ~ x, method = lm, se = FALSE) +
+    
+   
+    
+    
+    geom_boxplot( aes(group = year, y = Nitrogen), 
+                  fill="#1ee682", alpha=0.4, outlier.shape=1) + 
+    
+    geom_jitter(data=leafPhelps.tibl, 
+                aes(x = as.character(year), y = Nitrogen),
+                    color = "black", fill = "white", 
+                    shape = 21, size = 3, width=0.1) +
 
+       
+    
+    
     # discrete axis determines boxplot orientation
     #scale_x_discrete(breaks = seq(min(2010), max(2024), by = 1)) +
     scale_x_discrete(limits=as.character(yearsWithData)) +
 
-    scale_y_continuous(limits=c(0, 5), breaks = seq(min(0), max(5), by = 1)) +
-    #annotate("text", y = 1:5, group="2012", 
-        #  label = c("deficient", "low", "ok", "high", "excessive"    )) +
+    scale_y_continuous(limits=c(.5, 3.75), 
+                       breaks = seq(min(0), max(as.numeric(material.high) + .15), 
+                                by = .25)) +
 
-  	 labs(x = "year", y ="5 point scale", 
- 				  title = paste("material : ", label, " ", material, sep="")) +
+  	labs(x = "year", y ="percent", 
+ 				  title = paste(label, " ", sep="")) +
     
-    theme_bw() 
+    # set default color for each group (otherwise geom_text text labels are "red")
+    # https://stackoverflow.com/questions/41541708/how-to-change-font-color-in-geom-text-in-ggplot2-in-r
+    # << or >>
+    # https://stackoverflow.com/questions/61209218/changing-of-color-for-geom-text-gives-completely-different-color-then-called-for
+    scale_colour_manual(values=c("#000000")) +
+    
+    theme_bw()  +
+    # turn off legend
+    theme(legend.position="none")
   
     if (TRUE) {
     # add labels for the amount of K injected each year
@@ -93,19 +140,52 @@ plotMaterial <- function(tibble, label, path, xaxis, material, material.history)
           filter(year==yearsWithData[[i]])  %>% 
           pull(K..gallons.)
         
-        content.string <- paste("K: ", k.gallons, " gal", sep="")
+        n.gallons <- material.history %>% 
+          filter(year==yearsWithData[[i]])  %>% 
+          pull(N..gallons.)
         
-        #print( yearsWithData[[i]])
+        content.string <- paste(n.gallons, " : ", k.gallons, sep="")
         
-        gg + makeLabels(content=content.string, 
+        # print( yearsWithData[[i]])
+        
+        gg <- gg + makeLabels(content=content.string, 
                         x.position=yearsWithData[[i]], 
-                        y.position = 1.5)
+                        y.position = 3.33)
       }
     }
+  
+      if (TRUE) {
+            
+        gg <- gg + labs( subtitle = paste(
+                                "nitrogen (green) optimum range: ", 
+                                as.numeric(n.low), " to ", 
+                                as.numeric(n.high), " percent\n", 
+                                "potassium (blue) optimum range: ", 
+                                as.numeric(k.low), " to ", 
+                                as.numeric(k.high), " percent\n", 
+                                "white data points = phelps, black = huff", sep="")) 
+          
+       
+        # add an arrow and a label of explanation
+          
+        gg <- gg + geom_hline(yintercept = 3.5, linetype='solid')
+            
+        # add an arrow and a label of explanation
+          
+        gg <- gg + geom_curve(x = 6.5, y = 3.7,
+                            xend = 4, yend = 3.55,
+                            color = "black", arrow = arrow())
+          
+        gg <- gg + geom_label(aes(label="annual N:K applied (gallons)"), 
+                                    x = 8, y = 3.65, 
+                              fill = "white")          
+          
+    }
       
-    if (FALSE) {
+    if (TRUE) {
       
-      fileName <- paste(label, "-", material, "-byBlock.pdf", sep="")
+      path <- getwd()
+      fileName <- paste("NK", "-byBlock.pdf", sep="")
       fullPath <- paste(path, "/", fileName, sep="")
 
       if (file.exists(fullPath)) { file.remove(fullPath) }
@@ -114,6 +194,7 @@ plotMaterial <- function(tibble, label, path, xaxis, material, material.history)
        scale = 1, width = 8, height = NA, dpi = 300, limitsize = TRUE,
        units = "in") )
       
+      print(paste( "saved ", fullPath, sep=" "))
     }
   
   return(gg)
@@ -127,11 +208,10 @@ makeLabels <- function(content, x.position, y.position) {
   
   print(paste( content, x.position, y.position, sep=" "))
   
-  gg.label <- geom_text(aes(x=2, y=y.position, label=content, 
-                        #group=as.character(x.position),
-                        angle= 45,
-                        #  size = 0.35,
-                        color = "black"))
+  gg.label <- geom_text(aes(x=x.position, y=y.position,
+                            label=content, angle= 22, colour = "black"), size = 3)
+                          #group=as.character(x.position),
+                          #  size = 0.35,
     
   return(gg.label)
 }
