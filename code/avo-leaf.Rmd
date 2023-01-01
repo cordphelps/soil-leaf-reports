@@ -116,7 +116,7 @@ plotMaterial <- function(tibble, label, path, xaxis, material, material.history)
     scale_x_discrete(limits=as.character(yearsWithData)) +
 
     scale_y_continuous(limits=c(.5, 3.75), 
-                       breaks = seq(min(0), max(as.numeric(material.high) + .15), 
+                       breaks = seq(min(0), max(as.numeric(n.high) + .15), 
                                 by = .25)) +
 
   	labs(x = "year", y ="percent", 
@@ -184,13 +184,14 @@ plotMaterial <- function(tibble, label, path, xaxis, material, material.history)
       
     if (TRUE) {
       
-      path <- getwd()
       fileName <- paste("NK", "-byBlock.pdf", sep="")
-      fullPath <- paste(path, "/", fileName, sep="")
+      wd <- getwd() 
+      dirPath <- paste(wd, "/output/", sep="")
+      fullPath <- paste(wd, "/output/", fileName, sep="")
 
       if (file.exists(fullPath)) { file.remove(fullPath) }
 
-      suppressMessages(ggsave(fileName, plot = gg, device = NULL, path = path,
+      suppressMessages(ggsave(fileName, plot = gg, device = NULL, path = dirPath,
        scale = 1, width = 8, height = NA, dpi = 300, limitsize = TRUE,
        units = "in") )
       
